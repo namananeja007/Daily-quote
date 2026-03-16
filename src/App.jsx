@@ -17,7 +17,7 @@ const FALLBACK_QUOTES = [
 
 function App() {
   const [quote, setQuote] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [likedQuotes, setLikedQuotes] = useState([]);
   const [error, setError] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -27,6 +27,7 @@ function App() {
   const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
+    console.log('🚀 App initializing...');
     const handleMouseMove = (e) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
@@ -35,18 +36,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem('likedQuotes');
-    const streak = localStorage.getItem('dailyStreak') || 0;
-    const views = localStorage.getItem('viewCount') || 0;
-    if (stored) {
-      try {
-        setLikedQuotes(JSON.parse(stored));
-      } catch {
-        setLikedQuotes([]);
+    try {
+      console.log('📦 Loading localStorage data...');
+      const stored = localStorage.getItem('likedQuotes');
+      const streak = localStorage.getItem('dailyStreak') || 0;
+      const views = localStorage.getItem('viewCount') || 0;
+      if (stored) {
+        try {
+          setLikedQuotes(JSON.parse(stored));
+        } catch {
+          console.warn('⚠️ Failed to parse liked quotes from localStorage');
+          setLikedQuotes([]);
+        }
       }
+      setDailyStreak(parseInt(streak));
+      setViewCount(parseInt(views));
+      console.log('✅ localStorage loaded successfully');
+    } catch (err) {
+      console.error('❌ Error loading localStorage:', err);
     }
-    setDailyStreak(parseInt(streak));
-    setViewCount(parseInt(views));
   }, []);
 
   useEffect(() => {
@@ -59,6 +67,7 @@ function App() {
   }, [dailyStreak, viewCount]);
 
   useEffect(() => {
+    console.log('🔄 Fetching initial quote...');
     fetchNewQuote();
   }, []);
 
@@ -66,18 +75,24 @@ function App() {
     setLoading(true);
     setError('');
     try {
+      console.log('🌐 Fetching from API:', RANDOM_QUOTE_URL);
       const res = await fetch(RANDOM_QUOTE_URL, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
       });
-      if (!res.ok) throw new Error('API Error: ' + res.status);
+      if (!res.ok) {
+        console.warn(`⚠️ API returned status ${res.status}, using fallback`);
+        throw new Error('API Error: ' + res.status);
+      }
       const data = await res.json();
+      console.log('✅ Quote fetched from API:', data.content.substring(0, 50) + '...');
       setQuote({ text: data.content, author: data.author, id: data._id });
       setViewCount(viewCount + 1);
       setDailyStreak(dailyStreak + 1);
     } catch (e) {
-      console.error('API Fetch error:', e);
+      console.warn('📚 API Fetch failed, using fallback quotes. Error:', e.message);
       const fallbackQuote = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
+      console.log('✅ Using fallback quote:', fallbackQuote.content.substring(0, 50) + '...');
       setQuote({ text: fallbackQuote.content, author: fallbackQuote.author, id: fallbackQuote._id });
       setViewCount(viewCount + 1);
     } finally {
